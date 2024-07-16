@@ -1,1 +1,18 @@
-# Write Kubernetes Deployment Script
+version: '3.8'
+
+services:
+  book-catalog:
+    build:
+      context: ..
+      dockerfile: ./Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - DATABASE_URL=postgresql://sql_db_ymha_user:ghZWIo49qjb44jUuTDj2GD9FKGurdw1H@dpg-cq965giju9rs73b0lhm0-a.singapore-postgres.render.com/sql_db_ymha
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
