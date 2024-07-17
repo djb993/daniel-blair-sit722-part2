@@ -1,18 +1,43 @@
-version: '3.8'
-
-services:
-  book-catalog:
-    build:
-      context: ..
-      dockerfile: ./Dockerfile
-    ports:
-      - "8000:8000"
-    environment:
-      - PORT=8000
-      - DATABASE_URL=postgresql://sql_db_ymha_user:ghZWIo49qjb44jUuTDj2GD9FKGurdw1H@dpg-cq965giju9rs73b0lhm0-a.singapore-postgres.render.com/sql_db_ymha
-    networks:
-      - backend
-
-networks:
-  backend:
-    driver: bridge
+##############  Define Deployment  ##############
+apiVersion: apps/v1 # Specify Version of Kubernetes to use
+kind: Deployment # Define the type of resource - 'Deployment' - which manages pods and ensures enough replicas
+metadata:
+  name: book-catalog-deployment # Name uniquely identifies Deployment resource for direct reference by user
+  labels: 
+    app: book-catalog-service # Label allows a Service to identify and select all pods managed by this Deployment using label: 'app: book-catalog-service'
+spec: # Define how the Deployment should behave
+  replicas: 1 # Specify number of pods to be running at any given time
+  selector: # Selector defines how the Deployment identifies the pods it manages.
+    matchLabels: 
+      app: book-catalog-service # matchLabels specifies this Deployment will manage pods with the label 'app: book-catalog-service'
+  template: # Provide a template for creating new pods
+    metadata:
+      labels:
+        app: book-catalog-service # Assigns the label 'app: book-catalog-service' to each pod created by this Deployment. This label must match the selector's label.
+    spec: # Describes the specifications for the pod
+      containers: # List the containers that will run within the pod (In this case 1 - book-catalog-service)
+        - name: book-catalog-service # Names the container book-catalog-service
+          image: book-catalog-service:1 # Specifies the container image to use ( :1 indicates image version)
+          ports: # Defines ports the container will expose - This makes the container accessible to other containers and external clients.
+            - containerPort: 8000 # Sets the port number the container listens on from within container (As a default)
+          env: # Environment variables allow configuration of applications running inside the container more dynamically
+            - name: PORT # Setting PORT here allows the ability to change the port without modifying the container. 
+              value: "8000"
+            - name: DATABASE_URL
+              value: "postgresql://cloud_native_part2_db_user:Zjw95jq21D4UqCTtbtbkaJg7iHnqu3Zs@dpg-cqbinkmehbks73dp79ug-a.singapore-postgres.render.com/cloud_native_part2_db"
+              # Sets the DATABASE_URL environment variable to the specified PostgreSQL connection string.
+---
+##############  Define Service  ##############
+apiVersion: v1 # Specifies the Kubernetes version (Note different to deployment - due to how Kubernetes manages their API)
+kind: Service # Define the type of resource - 'Service' - which manages the networking such as load balancing and routing for each pod in the service
+metadata:
+  name: book-catalog-service # Set the name of the service to 'book-catalog-service'
+spec:
+  selector: # Specify how the Service identifies which pods it should route traffic to based on labels
+    app: book-catalog-service # 'app: book-catalog-service' - Matches pods with the label 'app: book-catalog-service' (Note: No MatchLabels like in Deployment)
+  type: NodePort # Specify the Service to be exposed on each Node's IP at a static port (nodePort) accessible from outside the cluster.
+  ports: # Define the ports that the Service will expose.
+    - protocol: TCP # Specify the protocol used for the port 
+      port: 8000 # (Cluster Access) - Specify the port number on which the Service will be exposed internally within the cluster.
+      targetPort: 8000 # (Pods Access) - Specify the port number on the pods to which the traffic will be forwarded by the Service. 
+      nodePort: 30000 # (User Access) - External traffic arriving at this port on any Node will be forwarded to the Service's targetPort on the pods.
